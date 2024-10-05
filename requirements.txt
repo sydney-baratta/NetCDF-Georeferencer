@@ -1,0 +1,4 @@
+xarray
+rasterio
+netCDF4
+h5netcdf
