@@ -49,7 +49,7 @@ def main():
     input_bands = parse_bands(sys.argv[3])
     if debug:
         debug_print('Input file path: ' + file_path)
-        debug_print('Output Directory path: ' + file_path)
+        debug_print('Output Directory path: ' + output_dir)
 
     ds = xr.open_dataset(file_path)
     if debug:
