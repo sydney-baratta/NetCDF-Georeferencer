@@ -4,6 +4,7 @@ from pathlib import Path
 import xarray as xr
 import rasterio
 from rasterio.transform import from_origin
+from pyproj import Proj, Transformer
 
 def parse_bands(bands):
     return [bool(int(bit)) for bit in bands]
@@ -32,8 +33,38 @@ def main():
     latitudes = ds['latitude'].values
     longitudes = ds['longitude'].values
 
-    # Define the transformation
-    transform = from_origin(longitudes.min(), latitudes.max(), 30, 30)  # Adjust pixel size (30 here) as necessary
+    # Debug: Print input coordinates
+    print("Input Longitudes (first 5):", longitudes.flatten()[:5])
+    print("Input Latitudes (first 5):", latitudes.flatten()[:5])
+
+    # Define UTM projection for Zone 23N
+    in_proj = Proj('epsg:4326')  # WGS84
+    out_proj = Proj('epsg:32623')  # UTM Zone 23N
+
+    # Create a transformer
+    transformer = Transformer.from_proj(in_proj, out_proj, always_xy=True)
+
+    # Convert latitude and longitude to UTM
+    utm_x, utm_y = transformer.transform(longitudes.flatten(), latitudes.flatten())
+    
+    # Reshape back to the original dimensions
+    utm_x = utm_x.reshape(latitudes.shape)
+    utm_y = utm_y.reshape(latitudes.shape)
+
+    # Debug: Print transformed coordinates
+    print("Transformed UTM X (first 5):", utm_x.flatten()[:5])
+    print("Transformed UTM Y (first 5):", utm_y.flatten()[:5])
+
+    # Define the pixel size based on Landsat 8 resolution (30m)
+    pixel_size_x = 30
+    pixel_size_y = 30
+
+    # Set top-left corner of the raster
+    top_left_x = utm_x[0, 0]  # X coordinate of the top-left corner
+    top_left_y = utm_y[0, 0]  # Y coordinate of the top-left corner (max Y)
+
+    # Create the transformation
+    transform_geo = from_origin(top_left_x, top_left_y, pixel_size_x, pixel_size_y)
 
     # Create a new directory based on the original file name (without extension)
     output_subdir = Path(output_dir) / f"{Path(file_path).stem}"
@@ -48,12 +79,12 @@ def main():
             output_path,
             'w',
             driver='GTiff',
-            height=reflectance_data.shape[0],  # Use height directly
-            width=reflectance_data.shape[1],   # Use width directly
+            height=reflectance_data.shape[0],
+            width=reflectance_data.shape[1],
             count=1,  # Number of bands
             dtype=reflectance_data.dtype,
-            crs='EPSG:4326',  # Set the correct CRS
-            transform=transform,
+            crs='EPSG:32623',  # Set the correct CRS for UTM Zone 23N
+            transform=transform_geo,
         ) as dst:
             dst.write(reflectance_data.values, 1)  # Write data to the first band
 
