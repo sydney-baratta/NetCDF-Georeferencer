@@ -129,7 +129,7 @@ def main():
             width=reflectance_data.shape[1],
             count=1,  # Number of bands
             dtype=reflectance_data.dtype,
-            crs='EPSG:32623',  # Set the correct CRS for UTM Zone 23N
+            crs=out_proj_code.upper(),  # Set the correct CRS for UTM Zone 23N
             transform=transform_geo,
         ) as dst:
             dst.write(reflectance_data.values, 1)  # Write data to the first band
