@@ -3,11 +3,26 @@ import os
 from pathlib import Path
 import xarray as xr
 import rasterio
+import numpy as np
 from rasterio.transform import from_origin
 from pyproj import Proj, Transformer
 
 def parse_bands(bands):
     return [bool(int(bit)) for bit in bands]
+
+def get_out_proj(longitudes, latitudes):
+    out_proj_code = 'epsg:32'
+    mean_lon = np.mean(longitudes)
+    utm_zone = int(np.floor((mean_lon + 180) / 6)) + 1
+
+    if np.mean(latitudes[:]) >= 0:
+        out_proj_code = out_proj_code + '6'
+    else:
+        out_proj_code = out_proj_code + '7'
+    
+    out_proj_code = out_proj_code + str(utm_zone)
+    return out_proj_code
+    
 
 def main():
     if len(sys.argv) < 4:
@@ -39,7 +54,7 @@ def main():
 
     # Define UTM projection for Zone 23N
     in_proj = Proj('epsg:4326')  # WGS84
-    out_proj = Proj('epsg:32623')  # UTM Zone 23N
+    out_proj = Proj(get_out_proj(longitudes, latitudes))  # UTM Zone set dynamically
 
     # Create a transformer
     transformer = Transformer.from_proj(in_proj, out_proj, always_xy=True)
